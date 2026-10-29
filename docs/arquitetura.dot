@@ -1,0 +1,47 @@
+digraph arq {
+  graph [rankdir=LR, fontname="Helvetica", bgcolor="white", pad=0.4, nodesep=0.35, ranksep=0.9, compound=true,
+         label="Totem Núcleo — componentes e comunicação", labelloc=t, fontsize=20, fontcolor="#0B1F3A"];
+  node  [fontname="Helvetica", fontsize=11, style="rounded,filled", shape=box, color="#1971C2", fillcolor="#FFF5F5", fontcolor="#0B1F3A", penwidth=1.3];
+  edge  [fontname="Helvetica", fontsize=10, color="#0B1F3A", fontcolor="#1971C2"];
+
+  subgraph cluster_totem {
+    label="Totem físico (escola, museu, evento)"; style="rounded,filled"; fillcolor="#F4F8FC"; color="#1971C2"; fontcolor="#1971C2"; fontsize=13;
+    pir    [label="Sensor PIR HC-SR501\nmovimento (até ~7 m)"];
+    us     [label="Ultrassônico HC-SR04\ndistância do jogador"];
+    geiger [label="Módulo Geiger\n(tubo J305)\nradiação de fundo"];
+    btn    [label="2 botões arcade\nVERDADE / MITO"];
+    esp    [label="ESP32 DevKit\n(Arduino IDE)\nWi-Fi + Bluetooth", fillcolor="#1971C2", fontcolor="white", shape=box3d];
+    led    [label="LEDs RGB\nacerto / erro / atração"];
+    ldr    [label="Sensor LDR\nluz ambiente"];
+    buz    [label="Buzzer\nfeedback sonoro"];
+    tela   [label="Tablet / monitor\nApp Núcleo (Flutter)\nem modo quiosque"];
+    pir -> esp [label="digitalRead"]; us -> esp [label="lib Ultrasonic"];
+    ldr -> esp [label="analogRead + map"];
+    geiger -> esp [label="digitalRead (pulsos)"]; btn -> esp [label="INPUT_PULLUP"];
+    esp -> led [label="analogWrite (PWM)"]; esp -> buz [label="tone()"];
+    esp -> tela [label="Bluetooth\n(modo offline)", style=dotted, dir=both];
+  }
+
+  wifi [label="Roteador Wi-Fi 2.4 GHz\nda escola/evento\n(ou roteador 4G)", shape=cylinder, fillcolor="#E7F1FB"];
+
+  subgraph cluster_cloud {
+    label="Nuvem — VM Linux no Azure com Docker (mesma base da entrega de DevOps)"; style="rounded,filled"; fillcolor="#F4F8FC"; color="#0B1F3A"; fontcolor="#0B1F3A"; fontsize=13;
+    broker [label="Broker MQTT\nMosquitto (container)", fillcolor="#0B1F3A", fontcolor="white"];
+    nodered[label="Node-RED (container)\nregras, alertas e\npainel de indicadores"];
+    java   [label="API Java (Spring)\nperguntas e conferência\n/jogo/perguntas/..."];
+    dotnet [label=".NET\nusuários, login\ne pontuação"];
+    oracle [label="Banco Oracle\nPERGUNTA, USUARIO,\neventos do totem", shape=cylinder];
+    broker -> nodered [label="subscribe\nnucleo/totem/+/#"];
+    java -> oracle; dotnet -> oracle; nodered -> oracle [label="grava eventos"];
+  }
+
+  equipe [label="Equipe Núcleo / Amazul\npainel + alertas por e-mail", shape=note, fillcolor="#FFF4E0", color="#F08C00"];
+
+  esp -> wifi  [label="Wi-Fi"];
+  wifi -> broker [label="MQTT/TLS :8883\npublica presenca, resposta,\nradiacao, status (LWT)"];
+  broker -> esp [label="comando acerto/erro\nnucleo/totem/01/cmd", style=dashed, constraint=false];
+  tela -> wifi [label="Wi-Fi"];
+  tela -> java [label="HTTP REST (JSON)\nGET sorteio / POST resposta", lhead=cluster_cloud];
+  tela -> broker [label="MQTT via WebSocket\nlê botões, envia comando", style=dashed];
+  nodered -> equipe [label="dashboard e\nalerta offline"];
+}

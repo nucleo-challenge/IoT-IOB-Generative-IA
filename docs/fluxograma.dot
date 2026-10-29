@@ -1,0 +1,54 @@
+digraph fluxo {
+  graph [rankdir=TB, fontname="Helvetica", bgcolor="white", pad=0.4, nodesep=0.45, ranksep=0.42,
+         label="Totem Núcleo — fluxograma do caminho dos dados (coleta → resultado/ação)", labelloc=t, fontsize=20, fontcolor="#0B1F3A"];
+  node  [fontname="Helvetica", fontsize=12, style="rounded,filled", shape=box, color="#1971C2", fillcolor="#FFF5F5", fontcolor="#0B1F3A", penwidth=1.4];
+  edge  [fontname="Helvetica", fontsize=11, color="#0B1F3A", fontcolor="#0B1F3A"];
+
+  inicio   [label="Início\nTotem ligado (ESP32 conecta no Wi-Fi\ne no broker MQTT)", shape=ellipse, fillcolor="#1971C2", fontcolor="white"];
+  standby  [label="Modo espera\nTela mostra ranking da semana\ne leitura de radiação de fundo"];
+  pir      [label="Sensor PIR detectou\nmovimento?", shape=diamond, fillcolor="#E7F1FB"];
+  atracao  [label="Modo atração\nLEDs RGB piscam + tela convida:\n\"Mito ou Verdade? Chegue mais perto!\""];
+  dist     [label="HC-SR04: pessoa a\nmenos de 80 cm?", shape=diamond, fillcolor="#E7F1FB"];
+  pubpres  [label="ESP32 publica evento\nnucleo/totem/01/presenca\n(MQTT, Wi-Fi)"];
+  sorteio  [label="App do totem chama a API Java\nGET /jogo/perguntas/aleatoria\ne exibe a afirmação"];
+  botao    [label="Jogador apertou\nVERDADE ou MITO\nem até 20 s?", shape=diamond, fillcolor="#E7F1FB"];
+  pubresp  [label="Botão lido com digitalRead (LOW)\nESP32 publica nucleo/totem/01/resposta\n{\"resposta\":\"V\"} (ou Bluetooth, se offline)"];
+  confere  [label="App recebe a resposta e chama\nPOST /jogo/perguntas/{id}/respostas\n(API devolve acerto + explicação + referência)"];
+  acertou  [label="Acertou?", shape=diamond, fillcolor="#E7F1FB"];
+  verde    [label="Comando MQTT → ESP32\nLED verde + bipe curto\n+10 pontos na rodada", fillcolor="#E6F6EA", color="#2F9E44"];
+  vermelho [label="Comando MQTT → ESP32\nLED vermelho + bipe duplo", fillcolor="#FDECEC", color="#E03131"];
+  explica  [label="Tela mostra a explicação\ne a fonte da afirmação"];
+  registra [label="Node-RED grava o evento\n(totem, pergunta, acerto, horário)\ne atualiza o painel"];
+  mais     [label="Rodada tem\n5 perguntas concluídas?", shape=diamond, fillcolor="#E7F1FB"];
+  fim      [label="Fim da rodada\nPontuação + QR Code para salvar\nno perfil (login da API .NET)\ne entrar no ranking"];
+
+  inicio -> standby -> pir;
+  pir -> standby [label="  não"];
+  pir -> atracao [label="  sim"];
+  atracao -> dist;
+  dist -> standby [label="  não\n  (timeout 30 s)"];
+  dist -> pubpres [label="  sim"];
+  pubpres -> sorteio -> botao;
+  botao -> fim [label="  não (desistiu)"];
+  botao -> pubresp [label="  sim"];
+  pubresp -> confere -> acertou;
+  acertou -> verde [label="  sim"];
+  acertou -> vermelho [label="  não"];
+  verde -> explica; vermelho -> explica;
+  explica -> registra -> mais;
+  mais -> sorteio [label="  não"];
+  mais -> fim [label="  sim"];
+  fim -> standby [label="  volta ao\n  modo espera"];
+
+  subgraph cluster_bg {
+    label="Rotinas em paralelo (a cada 60 s)"; fontsize=13; style="dashed,rounded"; color="#1971C2"; fontcolor="#1971C2";
+    geiger [label="Módulo Geiger conta pulsos (CPM)\nESP32 converte para µSv/h"];
+    pubrad [label="Publica nucleo/totem/01/radiacao\ne heartbeat nucleo/totem/01/status"];
+    lwt    [label="Totem parou de responder?\n(Last Will do MQTT)", shape=diamond, fillcolor="#E7F1FB"];
+    alerta [label="Node-RED envia alerta\npara a equipe (e-mail)\ne marca totem como offline", fillcolor="#FFF4E0", color="#F08C00"];
+    painel [label="Painel atualizado:\nradiação por local, acessos,\ntaxa de acerto por mito"];
+    geiger -> pubrad -> lwt;
+    lwt -> alerta [label="  sim"];
+    lwt -> painel [label="  não"];
+  }
+}
