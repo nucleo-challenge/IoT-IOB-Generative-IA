@@ -6,7 +6,7 @@ Empresa parceira: **Amazul / CTMSP — Programa Nuclear da Marinha**
 
 > Proposta **conceitual**: esta entrega descreve como IoT e Redes se aplicam ao projeto Núcleo. O sistema físico não foi construído nesta Sprint.
 
-🎥 **Vídeo de apresentação (YouTube, não listado):** <https://github.com/nucleo-challenge/IoT-IOB-Generative-IA.git>
+🎥 **Vídeo de apresentação (YouTube, não listado):** <https://youtu.be/SZBqGL-cVQk>
 
 ---
 
